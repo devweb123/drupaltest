@@ -1,0 +1,57 @@
+<?php
+/* add api key field in site information form */
+function tests_form_alter(&$form, &$form_state, $form_id){
+      if($form_id == 'system_site_information_settings'){
+            $form['site_information']['site_api_key'] = array(
+           '#title' => t('Site API Key'),
+           '#description' => t('Please assign an api key for your site'),
+           '#type' => 'textfield',
+           '#default_value' => !empty(variable_get('site_api_key')) ? variable_get('site_api_key') : 'No API Key yet',
+      );
+       // If API Key value already set then Update Configuration.
+        if ( variable_get('site_api_key') != NULL ) {
+          $form['actions']['submit']['#value'] = t('Update Configuration');
+        }
+       $form['#submit'][] = 'tests_form_submit';
+    }
+} 
+/* save api key as system veriable  */
+function tests_form_submit($form, &$form_state){
+    //echo 'abc';exit();
+    $values = $form_state['values'];
+    if( $values['site_api_key'] != '' && $values['site_api_key'] != 'No API Key yet'){
+        variable_set('site_api_key', $values['site_api_key']);
+        drupal_set_message('Site API Key has been saved with that value '.$values['site_api_key']);
+    }
+}
+/* hook menu implementation */
+function tests_menu() {
+  $menu['page_json/%'] = array(
+      'title' => 'Node to Json',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('node_to_json_converter'),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+  );
+  return $menu;
+}
+/* call page arguement function here */
+function node_to_json_converter() {
+  $arg = arg();
+  $access = FALSE;
+  if ($arg[0] == 'page_json' && $arg[1] != NULL && is_numeric($arg[2])) {
+
+    if (variable_get('site_api_key') != '' and variable_get('site_api_key') != NULL ) {
+      if ($node = node_load ($arg[2]) ) {
+        if ( $node->type == 'page' && ($node->status ==1) ) {
+          $access = TRUE;
+        }   
+      }
+    }
+  }
+
+  // 'Access Denied'.
+  if ( $access == FALSE) {
+   drupal_set_message('Access Denied' , 'error');
+  }
+}
